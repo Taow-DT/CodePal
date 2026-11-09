@@ -1,0 +1,16 @@
+[project]
+name = "CodePal"
+version = "1.0.0"
+description = "CodePal —— 一个类似 CodeBuddy 的本地 AI 编程助手平台（四大工具 + MCP + 可安装包）"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+codepal = "codepal.main:main"
+
+[tool.setuptools]
+packages = ["codepal", "codepal.web"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

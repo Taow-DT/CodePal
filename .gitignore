@@ -1,0 +1,29 @@
+# ---------- Python ----------
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# ---------- 构建产物（用 GitHub Releases / Actions 分发，不进 git） ----------
+build/
+dist/
+release/
+*.spec.bak
+CodePal.old*.exe
+
+# ---------- 早期测试遗留（不纳入仓库） ----------
+None
+hello.py
+hello.py.bak
+multiplication_table.py
+multiplication_table.py.bak
+multiplication_table_left.py
+
+# ---------- 本地配置 / 密钥（勿提交） ----------
+config.json
+
+# ---------- OS / 编辑器 ----------
+Thumbs.db
+.DS_Store
+*.swp

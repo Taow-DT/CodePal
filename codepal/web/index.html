@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CodePal · AI 编程助手</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <!-- ===== 顶部菜单栏 ===== -->
+  <div class="menubar">
+    <div class="mb-left">
+      <span class="mb-app">CodePal</span>
+      <button class="mb-item" data-menu="file">文件(F)</button>
+      <button class="mb-item" data-menu="edit">编辑(E)</button>
+      <button class="mb-item" data-menu="select">选择(S)</button>
+      <button class="mb-item" data-menu="view">查看(V)</button>
+      <button class="mb-item" data-menu="goto">转到(G)</button>
+      <button class="mb-item" data-menu="run">运行(R)</button>
+      <button class="mb-item" data-menu="terminal">终端(T)</button>
+      <button class="mb-item" data-menu="help">帮助(H)</button>
+      <div class="mb-nav">←&nbsp;→</div>
+      <div class="mb-search"><span class="mb-search-ic">🔍</span><input placeholder="code" /></div>
+    </div>
+    <div class="mb-right">
+      <button id="btn-agents" class="mb-agents">打开 Agents</button>
+      <button class="mb-ic" title="布局">▥</button>
+      <button class="mb-ic" title="账户">◯</button>
+      <button id="btn-settings-top" class="mb-ic" title="设置">⚙</button>
+      <span class="mb-win">—&nbsp;□&nbsp;✕</span>
+    </div>
+  </div>
+
+  <div id="mb-dropdown" class="mb-dropdown hidden"></div>
+
+  <!-- ===== IDE 主区 ===== -->
+  <div class="ide">
+    <!-- 最左活动栏 -->
+    <div class="activitybar">
+      <div class="ab-logo" title="CodePal">CB</div>
+      <button class="ab-icon active" data-panel="explorer" title="资源管理器">
+        <svg viewBox="0 0 24 24"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9l-7-7z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M13 2v7h7" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+      <button class="ab-icon" data-panel="search" title="搜索">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7" fill="none" stroke="currentColor" stroke-width="1.6"/><line x1="16" y1="16" x2="21" y2="21" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+      <button class="ab-icon" data-panel="scm" title="源代码管理">
+        <svg viewBox="0 0 24 24"><circle cx="6" cy="6" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="6" cy="18" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="18" cy="18" r="2.4" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M6 8v8M6 12h12" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>
+      </button>
+      <button class="ab-icon" data-panel="run" title="运行和调试">
+        <svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z" fill="currentColor"/></svg>
+      </button>
+      <button class="ab-icon" data-panel="ext" title="扩展">
+        <svg viewBox="0 0 24 24"><rect x="4" y="4" width="6.5" height="6.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="4" width="6.5" height="6.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="4" y="13.5" width="6.5" height="6.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/><rect x="13.5" y="13.5" width="6.5" height="6.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+      <div class="ab-spacer"></div>
+      <button class="ab-icon ai" data-panel="ai" title="CodePal">
+        <svg viewBox="0 0 24 24"><path d="M12 2l1.6 4.8L18 8.4l-4.4 1.6L12 15l-1.6-4.8L6 8.4l4.4-1.6z" fill="currentColor"/></svg>
+        <span class="ab-badge">1</span>
+      </button>
+      <button class="ab-icon" data-panel="settings" title="设置">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M5 5l2 2M17 17l2 2M19 5l-2 2M7 17l-2 2" stroke="currentColor" stroke-width="1.6"/></svg>
+      </button>
+    </div>
+
+    <!-- 左侧栏：资源管理器 / 搜索 / 等等 -->
+    <div class="sidebar" id="sidebar">
+      <div class="side-panel active" data-panel="explorer">
+        <div class="side-head">
+          <span>资源管理器</span>
+          <span class="side-dots">···</span>
+        </div>
+        <div id="ws-label" class="ws-label">CODE</div>
+        <div id="file-tree" class="file-tree"></div>
+        <div class="side-sub collapsed" data-sub="outline">大纲</div>
+        <div class="side-sub collapsed" data-sub="timeline">时间线</div>
+      </div>
+      <div class="side-panel" data-panel="search">
+        <div class="side-head"><span>搜索</span></div>
+        <div class="side-ph">（演示）在资源管理器中输入以检索文件。</div>
+      </div>
+      <div class="side-panel" data-panel="scm">
+        <div class="side-head"><span>源代码管理</span></div>
+        <div class="side-ph">（演示）未连接 git 仓库。</div>
+      </div>
+      <div class="side-panel" data-panel="run">
+        <div class="side-head"><span>运行和调试</span></div>
+        <div class="side-ph">（演示）点击右上角 ▷ 运行当前文件。</div>
+      </div>
+      <div class="side-panel" data-panel="ext">
+        <div class="side-head"><span>扩展</span></div>
+        <div class="side-ph">（演示）暂无扩展。</div>
+      </div>
+    </div>
+    <div class="resizer" id="res-sidebar" title="拖动调节宽度"></div>
+
+    <!-- 中间：编辑器 + 底部终端 -->
+    <div class="editor">
+      <div class="tabs" id="tabs">
+        <div class="tab active" id="active-tab" data-file="">
+          <span class="tab-name">欢迎</span>
+          <span class="tab-dot hidden"></span>
+        </div>
+      </div>
+      <div class="editor-body">
+        <div class="gutter" id="gutter"><div>1</div></div>
+        <textarea id="code-area" class="code-area" spellcheck="false" placeholder="// 从左侧资源管理器打开一个文件，或使用右侧 CodePal 让 AI 生成代码"></textarea>
+      </div>
+      <!-- 底部终端 -->
+      <div class="terminal" id="terminal">
+        <div class="term-tabs">
+          <span class="term-tab">问题</span>
+          <span class="term-tab">输出</span>
+          <span class="term-tab">调试控制台</span>
+          <span class="term-tab active">终端</span>
+          <span class="term-tab">端口</span>
+          <span class="term-spacer"></span>
+          <span class="term-ic" title="新建终端">⊞</span>
+          <span class="term-ic" title="清除">🗑</span>
+          <span class="term-ic">···</span>
+        </div>
+        <div class="term-body" id="term-body">
+          <div id="term-log" class="term-log"></div>
+          <div class="term-input-line">
+            <span class="term-prompt" id="term-prompt">PS C:\&gt;</span>
+            <input id="term-input" class="term-input" autocomplete="off" spellcheck="false" />
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="resizer" id="res-ai" title="拖动调节宽度"></div>
+
+    <!-- 右侧：AI 对话面板 -->
+    <aside class="aipanel" id="aipanel">
+      <div class="ai-head">
+        <span class="ai-tab active">CodePal</span>
+        <span class="ai-head-actions">
+          <button id="btn-newchat" class="ai-hbtn" title="新建对话">＋</button>
+          <button class="ai-hbtn" title="历史">🕘</button>
+          <button id="btn-settings" class="ai-hbtn" title="设置">⚙</button>
+          <span class="ai-dots">···</span>
+        </span>
+      </div>
+      <div class="ai-body" id="messages">
+        <div class="ai-welcome" id="ai-welcome">
+          <div class="ai-title">让想法成为现实 ✨</div>
+          <div class="ai-sub">一站式产品工作室，助你规划、开发和发布应用。</div>
+          <div class="ai-card">
+            <div class="ai-card-title">👋 欢迎来到 vibe 编程的世界</div>
+            <ul>
+              <li>快速 MVP 原型开发</li>
+              <li>Figma 设计稿映射维护代码</li>
+              <li>0 后端经验开发动态网站</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <div class="ai-composer">
+        <div class="ai-toolbar">
+          <button class="tb-ic" title="提及">@</button>
+          <button class="tb-ic" title="图片">🖼</button>
+          <button class="tb-ic" title="代码块">¶</button>
+          <button class="tb-ic" title="终端">▦</button>
+          <button class="tb-ic" title="列表">≡</button>
+          <button class="tb-ic" title="回到顶部">↑</button>
+        </div>
+        <textarea id="chat-input" placeholder="给 CodePal 下达指令，例如：用 Python 写一个快速排序"></textarea>
+        <div class="ai-sendrow">
+          <button class="ai-chip">Chat ▾</button>
+          <button class="ai-chip">Hv3 ▾</button>
+          <button class="ai-chip">Skills ▾</button>
+          <span class="ai-spacer"></span>
+          <button id="btn-send" class="ai-send" title="发送">➤</button>
+          <button class="ai-rocket" title="运行">🚀</button>
+        </div>
+        <div class="ai-foot">内容由 AI 生成，仅供参考</div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- ===== 底部状态栏 ===== -->
+  <div class="statusbar">
+    <div class="st-left">
+      <span class="st-item">⊘</span>
+      <span class="st-item">⚠ 0</span>
+      <span class="st-item">⚠ 0</span>
+    </div>
+    <div class="st-right">
+      <span class="st-item" id="st-pos">行 1, 列 1</span>
+      <span class="st-item">空格: 4</span>
+      <span class="st-item">UTF-8</span>
+      <span class="st-item">CRLF</span>
+      <span class="st-item">{} Python</span>
+      <span class="st-item">3.13.6 64-bit</span>
+      <span class="st-item">WeCom</span>
+      <span class="st-item">3,363 (99%)</span>
+      <span class="st-item">🔔</span>
+    </div>
+  </div>
+
+  <!-- ===== 设置弹窗 ===== -->
+  <div id="settings-modal" class="modal hidden">
+    <div class="modal-card wide">
+      <div class="modal-head">
+        <h2>设置</h2>
+        <button id="btn-close-settings" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <fieldset class="fieldset">
+          <legend>模型配置</legend>
+          <label>API Base URL
+            <input id="cfg-base-url" placeholder="https://api.deepseek.com/v1" />
+          </label>
+          <label>API Key
+            <input id="cfg-api-key" type="password" placeholder="sk-..." />
+          </label>
+          <label>模型
+            <input id="cfg-model" placeholder="deepseek-chat" />
+          </label>
+          <div class="row">
+            <label>温度
+              <input id="cfg-temperature" type="number" step="0.1" min="0" max="2" />
+            </label>
+            <label>最大 Token
+              <input id="cfg-max-tokens" type="number" step="64" min="256" />
+            </label>
+          </div>
+          <label>工作区路径
+            <input id="cfg-workspace" placeholder="留空使用当前目录" />
+          </label>
+          <p class="hint">CodePal 使用 Open AI 兼容接口，可对接 DeepSeek / OpenAI 等。</p>
+        </fieldset>
+        <fieldset class="fieldset">
+          <legend>🔌 MCP 工具服务</legend>
+          <div id="mcp-list" class="mcp-list"></div>
+          <div class="mcp-form">
+            <input id="mcp-name" placeholder="名称，如 filesystem" />
+            <input id="mcp-cmd" placeholder="命令，如 npx" />
+            <input id="mcp-args" placeholder="参数，空格分隔，如 -y @modelcontextprotocol/server-filesystem C:/workspace" />
+            <button id="btn-mcp-connect" class="btn">连接</button>
+          </div>
+        </fieldset>
+      </div>
+      <div class="modal-foot">
+        <button id="btn-save-settings" class="btn primary">保存</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="/app.js"></script>
+</body>
+</html>

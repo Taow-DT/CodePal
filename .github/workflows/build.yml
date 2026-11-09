@@ -1,0 +1,39 @@
+name: Build Windows EXE
+
+# 给仓库打 tag（如 v1.0.0）并 push 时，自动在 Windows 上构建 CodePal.exe 并发布到 Releases。
+# 手动触发（Actions 页面 → Run workflow）只构建不上传。
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+permissions:
+  contents: write   # 允许 action-gh-release 创建/写入 Release
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install PyInstaller
+        run: pip install pyinstaller
+
+      - name: Build one-file EXE
+        run: python packaging/build_windows.py
+
+      - name: Upload to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/CodePal.exe
+          body: "自动构建的 CodePal 单文件可执行程序（双击即用，无需安装 Python）。"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
