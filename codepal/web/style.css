@@ -68,10 +68,10 @@ body {
 /* 菜单下拉 */
 .mb-dropdown {
   position: fixed; top: 30px; min-width: 200px; background: #252526; border: 1px solid var(--border-soft);
-  border-radius: 4px; padding: 4px 0; z-index: 100; box-shadow: 0 4px 14px rgba(0,0,0,.5);
+  border-radius: 4px; padding: 4px 0; z-index: 300; color: #cccccc; box-shadow: 0 4px 14px rgba(0,0,0,.5);
 }
 .mb-dropdown.hidden { display: none; }
-.mb-dropdown .dd-item { padding: 5px 16px; font-size: 13px; cursor: pointer; color: var(--text); }
+.mb-dropdown .dd-item { padding: 5px 16px; font-size: 13px; cursor: pointer; color: var(--text); white-space: nowrap; }
 .mb-dropdown .dd-item:hover { background: var(--sel-bg); }
 .mb-dropdown .dd-sep { height: 1px; background: var(--border-soft); margin: 4px 0; }
 

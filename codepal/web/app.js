@@ -380,7 +380,7 @@ function initActivityBar() {
   document.querySelectorAll(".ab-icon").forEach(btn => {
     btn.onclick = () => {
       const panel = btn.dataset.panel;
-      if (panel === "ai") { toggleAiPanel(); return; }
+      if (panel === "ai") { openAiPanel(); return; }
       if (panel === "settings") { openSettings(); return; }
       // 切换侧栏面板
       document.querySelectorAll(".ab-icon").forEach(b => b.classList.remove("active"));
@@ -392,8 +392,10 @@ function initActivityBar() {
   });
 }
 function toggleAiPanel() {
-  const p = $("aipanel");
-  p.classList.toggle("collapsed");
+  $("aipanel").classList.toggle("collapsed");
+}
+function openAiPanel() {
+  $("aipanel").classList.remove("collapsed");
 }
 
 function initMenu() {
@@ -490,7 +492,8 @@ $("btn-settings-top").onclick = openSettings;
 $("btn-close-settings").onclick = () => $("settings-modal").classList.add("hidden");
 $("btn-save-settings").onclick = saveSettings;
 $("btn-mcp-connect").onclick = connectMcp;
-$("btn-agents").onclick = () => toggleAiPanel();
+$("btn-agents").onclick = () => openAiPanel();
+$("btn-close-ai").onclick = () => $("aipanel").classList.add("collapsed");
 
 $("code-area").addEventListener("input", () => { updateGutter(); if (!editorDirty && editorFile) markDirty(true); });
 $("code-area").addEventListener("scroll", () => { $("gutter").scrollTop = $("code-area").scrollTop; });
