@@ -91,7 +91,13 @@
       </div>
       <div class="side-panel" data-panel="run">
         <div class="side-head"><span>运行和调试</span></div>
-        <div class="side-ph">（演示）点击右上角 ▷ 运行当前文件。</div>
+        <div class="side-ph">当前文件：<code id="run-file">未打开</code>
+          <div class="run-btns">
+            <button id="run-debug-btn" class="btn primary">▶ 启动调试</button>
+            <button id="run-run-btn" class="btn">▶ 运行</button>
+          </div>
+          <p class="hint">在左侧行号上点击即可设置/取消断点；调试时命中断点会显示当前变量，可用「继续 / 单步 / 停止」控制。</p>
+        </div>
       </div>
       <div class="side-panel" data-panel="ext">
         <div class="side-head"><span>扩展</span></div>
@@ -120,6 +126,11 @@
           <span class="term-tab">调试控制台</span>
           <span class="term-tab active">终端</span>
           <span class="term-tab">端口</span>
+          <span id="debug-bar" class="debug-bar hidden">
+            <button id="dbg-continue" class="dbg-btn" title="继续 (F5)">▶ 继续</button>
+            <button id="dbg-step" class="dbg-btn" title="单步 (F10)">⏭ 单步</button>
+            <button id="dbg-stop" class="dbg-btn stop" title="停止 (Shift+F5)">■ 停止</button>
+          </span>
           <span class="term-spacer"></span>
           <span class="term-ic" title="新建终端">⊞</span>
           <span class="term-ic" title="清除">🗑</span>

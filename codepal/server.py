@@ -27,6 +27,7 @@ from .agent import Agent
 from .config import load_config, save_config, mask_config
 from .llm import LLMClient, LLMError
 from .mcp import MCPRegistry, MCPError
+from .debug import DebugManager
 
 
 def _web_dir() -> Path:
@@ -47,6 +48,7 @@ class CodePalApp:
     def __init__(self) -> None:
         self.config = load_config()
         self.mcp = MCPRegistry()
+        self.debug = DebugManager()
         self.llm: LLMClient | None = None
         self.agent: Agent | None = None
         self._rebuild()
@@ -129,6 +131,8 @@ class Handler(BaseHTTPRequestHandler):
             return self._json(mask_config(self.app.config))
         if path == "/api/mcp":
             return self._json({"servers": self.app.mcp.snapshot()})
+        if path == "/api/debug/events":
+            return self._debug_events(parse_qs(parsed.query))
         return self._error(404, "Not found")
 
     def do_POST(self) -> None:  # noqa: N802
@@ -152,6 +156,12 @@ class Handler(BaseHTTPRequestHandler):
             return self._json({"ok": True})
         if path.startswith("/api/tool/"):
             return self._direct_tool(path.split("/")[-1], data)
+        if path == "/api/debug/start":
+            return self._debug_start(data)
+        if path == "/api/debug/command":
+            return self._debug_command(data)
+        if path == "/api/debug/stop":
+            return self._debug_stop(data)
         return self._error(404, "Not found")
 
     # -- handlers -----------------------------------------------------------
@@ -212,6 +222,49 @@ class Handler(BaseHTTPRequestHandler):
     def _rebuild_agent_after_mcp(self) -> None:
         # agent already holds the same registry instance, just refresh llm/tools
         self.app._rebuild()
+
+    # -- debug --------------------------------------------------------------
+    def _debug_start(self, data: Dict[str, Any]) -> None:
+        ws = self.app.config["workspace"]
+        rel = data.get("path", "")
+        bps = data.get("breakpoints", []) or []
+        sid, session = self.app.debug.new_session(ws, rel, bps)
+        res = session.start()
+        if not res.get("ok"):
+            self.app.debug.sessions.pop(sid, None)
+            self._json({"ok": False, "error": res.get("error", "启动失败")})
+            return
+        self._json({"ok": True, "session": sid})
+
+    def _debug_events(self, q: Dict[str, Any]) -> None:
+        sid = q.get("session", [""])[0]
+        try:
+            after = int(q.get("after", ["-1"])[0])
+        except ValueError:
+            after = -1
+        session = self.app.debug.get(sid)
+        if not session:
+            self._json({"ok": False, "error": "调试会话不存在或已结束", "events": [], "ended": True})
+            return
+        self._json({"ok": True, "events": session.drain(after), "ended": session.ended})
+
+    def _debug_command(self, data: Dict[str, Any]) -> None:
+        sid = data.get("session", "")
+        session = self.app.debug.get(sid)
+        if not session:
+            self._json({"ok": False, "error": "会话不存在"})
+            return
+        session.command(data.get("command", "c"))
+        self._json({"ok": True})
+
+    def _debug_stop(self, data: Dict[str, Any]) -> None:
+        sid = data.get("session", "")
+        session = self.app.debug.get(sid)
+        if not session:
+            self._json({"ok": False, "error": "会话不存在"})
+            return
+        session.stop()
+        self._json({"ok": True})
 
     # -- low level ----------------------------------------------------------
     def _read_body(self) -> str:

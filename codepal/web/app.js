@@ -56,12 +56,16 @@ function parentPath(p) { const i = p.lastIndexOf("/"); return i < 0 ? "" : p.sli
  * ============================================================ */
 let editorFile = "";     // 当前打开文件的相对路径
 let editorDirty = false;
+let breakpoints = new Set();   // 当前文件的断点行号集合
 
 async function openInEditor(rel) {
   const res = await api("POST", "/api/tool/read", { path: rel });
   if (!res.ok) { alert(res.error); return; }
   editorFile = rel;
   editorDirty = false;
+  breakpoints = new Set();
+  const rf = $("run-file");
+  if (rf) rf.textContent = rel;
   const ta = $("code-area");
   ta.value = res.content || "";
   ta.readOnly = false;
@@ -75,7 +79,10 @@ function updateGutter() {
   const lines = ta.value.split("\n").length;
   const g = $("gutter");
   let html = "";
-  for (let i = 1; i <= lines; i++) html += `<div>${i}</div>`;
+  for (let i = 1; i <= lines; i++) {
+    const bp = breakpoints.has(i) ? " bp" : "";
+    html += `<div class="gl${bp}" data-line="${i}"><span class="bpdot"></span>${i}</div>`;
+  }
   g.innerHTML = html;
   g.scrollTop = ta.scrollTop;
 }
@@ -409,7 +416,7 @@ function initMenu() {
     select: [["全选", () => { const ta=$("code-area"); ta.focus(); ta.select(); }]],
     view: [["切换资源管理器", () => toggleSidebar()], ["切换 AI 面板", () => toggleAiPanel()], ["命令面板…", () => openCommandPalette()]],
     goto: [["转到文件…", () => openFileBrowser()], ["转到行…", () => gotoLine()]],
-    run: [["运行当前文件", () => runCurrentFile()], ["启动调试", () => alert("调试功能未实现，请使用「运行当前文件」。")]],
+    run: [["运行当前文件", () => runCurrentFile()], ["启动调试", () => startDebug()]],
     terminal: [["新建终端", () => $("term-input").focus()], ["运行所选文本", () => runSelectedText()]],
     help: [["查看帮助", () => showHelp()], ["关于 CodePal", () => alert("CodePal · 本地 AI 编程助手平台（仿桌面 IDE 风格）")]],
   };
@@ -594,6 +601,7 @@ const COMMANDS = [
   { label: "切换资源管理器", fn: () => toggleSidebar() },
   { label: "切换 AI 面板", fn: () => toggleAiPanel() },
   { label: "运行当前文件", fn: () => runCurrentFile() },
+  { label: "启动调试", fn: () => startDebug() },
   { label: "查看帮助", fn: () => showHelp() },
 ];
 let cmdFiles = [];
@@ -654,6 +662,94 @@ async function runSelectedText() {
   await runTerminal(sel);
 }
 
+/* ============================================================
+ *  调试（断点 / 变量查看 / 继续 / 单步 / 停止）
+ * ============================================================ */
+let debugSession = null;   // 当前调试会话 id
+let debugAfter = -1;       // 已消费的调试事件游标
+let debugActive = false;   // 是否停在断点处（继续/单步可用）
+
+async function startDebug() {
+  if (debugSession) stopDebug();              // 先结束上一次
+  if (!editorFile) { alert("请先在左侧或编辑器打开一个 Python 文件"); return; }
+  const ext = editorFile.split(".").pop().toLowerCase();
+  if (ext !== "py") {
+    alert("调试目前仅支持 Python 文件（.py）。已为你改用「运行当前文件」。");
+    return runCurrentFile();
+  }
+  await saveCurrent();                        // 先保存，确保运行的是最新内容
+  const bps = [...breakpoints].sort((a, b) => a - b);
+  appendTerm(`▶ 启动调试: ${editorFile}` + (bps.length ? `  (断点: 行 ${bps.join(", ")})` : "  (无断点)"), "dbg");
+  showDebugBar(true);
+  setDebugActive(false);
+  const res = await api("POST", "/api/debug/start", { path: editorFile, breakpoints: bps });
+  if (!res.ok) { appendTerm("调试启动失败: " + res.error, "err"); showDebugBar(false); return; }
+  debugSession = res.session;
+  debugAfter = -1;
+  pollDebug();
+}
+
+async function pollDebug() {
+  if (!debugSession) return;
+  while (debugSession) {
+    const res = await api("GET", `/api/debug/events?session=${encodeURIComponent(debugSession)}&after=${debugAfter}`);
+    if (!res || !res.ok) break;
+    for (const ev of (res.events || [])) {
+      if (typeof ev._id === "number") debugAfter = Math.max(debugAfter, ev._id);
+      handleDebugEvent(ev);
+    }
+    if (res.ended) { endDebug(); break; }
+    await new Promise(r => setTimeout(r, 400));
+  }
+}
+
+function handleDebugEvent(ev) {
+  if (ev.event === "output") {
+    appendTerm(ev.text, "ok");
+  } else if (ev.event === "break") {
+    appendTerm(`⏸ 命中断点  行 ${ev.line}`, "dbg");
+    const loc = ev.locals || {};
+    const keys = Object.keys(loc);
+    if (keys.length) {
+      let s = "   变量:";
+      for (const k of keys.slice(0, 40)) s += `  ${k} = ${loc[k]}`;
+      appendTerm(s, "var");
+    } else {
+      appendTerm("   变量: (当前作用域无局部变量)", "var");
+    }
+    setDebugActive(true);
+  } else if (ev.event === "error") {
+    appendTerm("❌ 运行出错: " + ev.message, "err");
+  } else if (ev.event === "done") {
+    appendTerm("✔ 调试结束", "dbg");
+  }
+}
+
+function debugCmd(c) {
+  if (!debugSession) return;
+  if (c === "c" || c === "s") setDebugActive(false);
+  api("POST", "/api/debug/command", { session: debugSession, command: c });
+}
+function stopDebug() {
+  if (!debugSession) return;
+  api("POST", "/api/debug/stop", { session: debugSession });
+  endDebug();
+}
+function endDebug() {
+  debugSession = null;
+  showDebugBar(false);
+}
+function showDebugBar(on) {
+  const bar = $("debug-bar");
+  if (bar) bar.classList.toggle("hidden", !on);
+}
+function setDebugActive(on) {
+  debugActive = on;
+  ["dbg-continue", "dbg-step"].forEach(id => {
+    const b = $(id); if (b) b.disabled = !on;
+  });
+}
+
 let findPos = 0;
 async function findInEditor() {
   const q = prompt("查找：");
@@ -705,3 +801,25 @@ $("btn-newfolder-ok").onclick = doCreateFolder;
 $("btn-newfolder-cancel").onclick = () => $("new-folder-modal").classList.add("hidden");
 $("btn-close-newfolder").onclick = () => $("new-folder-modal").classList.add("hidden");
 $("nfd-name").addEventListener("keydown", (e) => { if (e.key === "Enter") doCreateFolder(); });
+
+/* 断点：点击行号切换 */
+$("gutter").addEventListener("click", (e) => {
+  const div = e.target.closest(".gl");
+  if (!div) return;
+  const ln = parseInt(div.dataset.line, 10);
+  if (breakpoints.has(ln)) breakpoints.delete(ln); else breakpoints.add(ln);
+  div.classList.toggle("bp");
+});
+/* 调试工具栏 */
+$("dbg-continue").onclick = () => debugCmd("c");
+$("dbg-step").onclick = () => debugCmd("s");
+$("dbg-stop").onclick = () => stopDebug();
+/* 运行和调试面板 */
+const _rdb = $("run-debug-btn"); if (_rdb) _rdb.onclick = () => startDebug();
+const _rrb = $("run-run-btn"); if (_rrb) _rrb.onclick = () => runCurrentFile();
+/* 调试快捷键：F5 继续 / F10 单步 / Shift+F5 停止 */
+document.addEventListener("keydown", (e) => {
+  if (!debugSession) return;
+  if (e.key === "F5") { e.preventDefault(); e.shiftKey ? stopDebug() : debugCmd("c"); }
+  else if (e.key === "F10") { e.preventDefault(); debugCmd("s"); }
+});
