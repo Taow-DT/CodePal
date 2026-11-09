@@ -193,6 +193,8 @@ class Handler(BaseHTTPRequestHandler):
                                              data.get("old_string", ""), data.get("new_string", ""))
             elif name == "bash":
                 res = builtin_tools.run_bash(ws, data.get("command", ""), int(data.get("timeout", 30)))
+            elif name == "mkdir":
+                res = builtin_tools.make_dir(ws, data.get("path", ""))
             else:
                 res = {"ok": False, "error": f"未知工具: {name}"}
         except Exception as e:

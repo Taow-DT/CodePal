@@ -68,7 +68,13 @@
       <div class="side-panel active" data-panel="explorer">
         <div class="side-head">
           <span>资源管理器</span>
-          <span class="side-dots">···</span>
+          <span class="side-actions">
+            <button id="exp-newfile" class="side-act" title="新建文件">📄＋</button>
+            <button id="exp-newfolder" class="side-act" title="新建文件夹">📁＋</button>
+            <button id="exp-refresh" class="side-act" title="刷新">⟳</button>
+            <button id="exp-collapse" class="side-act" title="收起侧栏">⟨</button>
+            <span class="side-dots">···</span>
+          </span>
         </div>
         <div id="ws-label" class="ws-label">CODE</div>
         <div id="file-tree" class="file-tree"></div>
@@ -275,6 +281,26 @@
       <div class="modal-foot">
         <button id="btn-newfile-cancel" class="btn">取消</button>
         <button id="btn-newfile-ok" class="btn primary">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 新建文件夹 ===== -->
+  <div id="new-folder-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>新建文件夹</h2>
+        <button id="btn-close-newfolder" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint">将在当前目录 <code id="nfd-dir">.</code> 下创建文件夹。</p>
+        <label>文件夹名称
+          <input id="nfd-name" placeholder="例如 my_project" autocomplete="off" spellcheck="false" />
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button id="btn-newfolder-cancel" class="btn">取消</button>
+        <button id="btn-newfolder-ok" class="btn primary">创建</button>
       </div>
     </div>
   </div>

@@ -153,6 +153,19 @@ def run_bash(workspace: str, command: str, timeout: int = 30) -> Dict[str, Any]:
     }
 
 
+def make_dir(workspace: str, path: str) -> Dict[str, Any]:
+    """Create a directory (and any missing parents) inside the workspace."""
+    try:
+        fp = resolve_path(workspace, path)
+    except ValueError as e:
+        return {"ok": False, "error": str(e)}
+    try:
+        fp.mkdir(parents=True, exist_ok=True)
+    except Exception as e:  # pragma: no cover - fs edge cases
+        return {"ok": False, "error": f"创建目录失败: {e}"}
+    return {"ok": True, "path": str(fp), "message": f"已创建目录 {fp}"}
+
+
 # ---------------------------------------------------------------------------
 # Tool registry
 # ---------------------------------------------------------------------------
@@ -161,11 +174,27 @@ TOOL_HANDLERS: Dict[str, Callable[..., Dict[str, Any]]] = {
     "write_file": write_file,
     "edit_file": edit_file,
     "run_bash": run_bash,
+    "make_dir": make_dir,
 }
 
 
 def tool_schemas() -> List[Dict[str, Any]]:
     return [
+        {
+            "type": "function",
+            "function": {
+                "name": "make_dir",
+                "description": "在工作区内创建一个新文件夹（可包含多级父目录）。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string",
+                                 "description": "相对于工作区的目录路径，如 src/new_folder"}
+                    },
+                    "required": ["path"],
+                },
+            },
+        },
         {
             "type": "function",
             "function": {
@@ -247,4 +276,6 @@ def dispatch(name: str, workspace: str, args: Dict[str, Any]) -> Dict[str, Any]:
     if name == "run_bash":
         return handler(workspace, args.get("command", ""),
                        int(args.get("timeout", 30)))
+    if name == "make_dir":
+        return handler(workspace, args.get("path", ""))
     return {"ok": False, "error": f"未实现: {name}"}

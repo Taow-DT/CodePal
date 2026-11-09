@@ -380,9 +380,13 @@ function initActivityBar() {
   document.querySelectorAll(".ab-icon").forEach(btn => {
     btn.onclick = () => {
       const panel = btn.dataset.panel;
-      if (panel === "ai") { openAiPanel(); return; }
+      if (panel === "ai") { toggleAiPanel(); return; }
       if (panel === "settings") { openSettings(); return; }
-      // 切换侧栏面板
+      // 点击已激活图标则收起侧栏（给出明确反馈）；切换面板时确保侧栏可见
+      const already = btn.classList.contains("active");
+      if (already) { toggleSidebar(); return; }
+      $("sidebar").style.display = "flex";
+      $("res-sidebar").style.display = "";
       document.querySelectorAll(".ab-icon").forEach(b => b.classList.remove("active"));
       btn.classList.add("active");
       document.querySelectorAll(".side-panel").forEach(p => p.classList.remove("active"));
@@ -492,7 +496,7 @@ $("btn-settings-top").onclick = openSettings;
 $("btn-close-settings").onclick = () => $("settings-modal").classList.add("hidden");
 $("btn-save-settings").onclick = saveSettings;
 $("btn-mcp-connect").onclick = connectMcp;
-$("btn-agents").onclick = () => openAiPanel();
+$("btn-agents").onclick = () => toggleAiPanel();
 $("btn-close-ai").onclick = () => $("aipanel").classList.add("collapsed");
 
 $("code-area").addEventListener("input", () => { updateGutter(); if (!editorDirty && editorFile) markDirty(true); });
@@ -538,6 +542,16 @@ async function doCreateFile() {
   $("new-file-modal").classList.add("hidden");
   await refreshFiles(currentPath);
   openInEditor(rel);
+}
+
+async function doCreateFolder() {
+  const name = $("nfd-name").value.trim();
+  if (!name) { alert("请输入文件夹名称"); return; }
+  const rel = currentPath ? currentPath + "/" + name : name;
+  const res = await api("POST", "/api/tool/mkdir", { path: rel });
+  if (!res.ok) { alert("创建失败: " + res.error); return; }
+  $("new-folder-modal").classList.add("hidden");
+  await refreshFiles(currentPath);
 }
 
 let ofAllFiles = [];
@@ -678,6 +692,16 @@ $("cmd-input").addEventListener("input", () => renderCmdList($("cmd-input").valu
 
 $("btn-close-help").onclick = () => $("help-modal").classList.add("hidden");
 
-["open-file-modal", "new-file-modal", "cmd-palette-modal", "help-modal"].forEach(id => {
+["open-file-modal", "new-file-modal", "cmd-palette-modal", "help-modal", "new-folder-modal"].forEach(id => {
   $(id).addEventListener("click", (e) => { if (e.target === $(id)) $(id).classList.add("hidden"); });
 });
+
+/* 资源管理器操作按钮 + 新建文件夹 */
+$("exp-newfile").onclick = () => openNewFile();
+$("exp-newfolder").onclick = () => { $("nfd-dir").textContent = currentPath || "(工作区根目录)"; $("nfd-name").value = ""; $("new-folder-modal").classList.remove("hidden"); $("nfd-name").focus(); };
+$("exp-refresh").onclick = () => refreshFiles(currentPath);
+$("exp-collapse").onclick = () => toggleSidebar();
+$("btn-newfolder-ok").onclick = doCreateFolder;
+$("btn-newfolder-cancel").onclick = () => $("new-folder-modal").classList.add("hidden");
+$("btn-close-newfolder").onclick = () => $("new-folder-modal").classList.add("hidden");
+$("nfd-name").addEventListener("keydown", (e) => { if (e.key === "Enter") doCreateFolder(); });
