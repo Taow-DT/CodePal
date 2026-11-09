@@ -398,14 +398,14 @@ function toggleAiPanel() {
 
 function initMenu() {
   const items = {
-    file: [["新建文件", () => {}], ["打开文件…", () => {}], ["—", null], ["保存 (Ctrl+S)", () => saveCurrent()], ["全部保存", () => saveCurrent()]],
-    edit: [["撤销", () => document.execCommand("undo")], ["重做", () => document.execCommand("redo")], ["—", null], ["查找", () => {}]],
+    file: [["新建文件", () => openNewFile()], ["打开文件…", () => openFileBrowser()], ["—", null], ["保存 (Ctrl+S)", () => saveCurrent()], ["全部保存", () => saveCurrent()]],
+    edit: [["撤销", () => { const ta=$("code-area"); ta.focus(); document.execCommand("undo"); }], ["重做", () => { const ta=$("code-area"); ta.focus(); document.execCommand("redo"); }], ["—", null], ["查找", () => findInEditor()]],
     select: [["全选", () => { const ta=$("code-area"); ta.focus(); ta.select(); }]],
-    view: [["切换资源管理器", () => toggleSidebar()], ["切换 AI 面板", () => toggleAiPanel()], ["命令面板…", () => {}]],
-    goto: [["转到文件…", () => {}], ["转到行…", () => {}]],
-    run: [["运行当前文件", () => {}], ["启动调试", () => {}]],
-    terminal: [["新建终端", () => $("term-input").focus()], ["运行所选文本", () => {}]],
-    help: [["查看帮助", () => {}], ["关于 CodePal", () => alert("CodePal · 本地 AI 编程助手平台（仿桌面 IDE 风格）")]],
+    view: [["切换资源管理器", () => toggleSidebar()], ["切换 AI 面板", () => toggleAiPanel()], ["命令面板…", () => openCommandPalette()]],
+    goto: [["转到文件…", () => openFileBrowser()], ["转到行…", () => gotoLine()]],
+    run: [["运行当前文件", () => runCurrentFile()], ["启动调试", () => alert("调试功能未实现，请使用「运行当前文件」。")]],
+    terminal: [["新建终端", () => $("term-input").focus()], ["运行所选文本", () => runSelectedText()]],
+    help: [["查看帮助", () => showHelp()], ["关于 CodePal", () => alert("CodePal · 本地 AI 编程助手平台（仿桌面 IDE 风格）")]],
   };
   document.querySelectorAll(".mb-item").forEach(btn => {
     btn.onclick = (e) => {
@@ -514,3 +514,167 @@ refreshFiles("");
 const _w = $("ai-welcome");
 if (_w) { _w.innerHTML = welcomeHTML(); initWelcomeChips(); }
 maybeShowKeyBanner();
+
+/* ============================================================
+ *  文件：新建 / 打开 / 命令面板 / 转到行 / 运行 / 查找 / 帮助
+ * ============================================================ */
+const SKIP_DIRS = new Set([".git", "__pycache__", "build", "dist", "node_modules", ".venv", "venv"]);
+
+async function openNewFile() {
+  $("nf-dir").textContent = currentPath || "(工作区根目录)";
+  $("nf-name").value = "";
+  $("new-file-modal").classList.remove("hidden");
+  $("nf-name").focus();
+}
+async function doCreateFile() {
+  const name = $("nf-name").value.trim();
+  if (!name) { alert("请输入文件名"); return; }
+  const rel = currentPath ? currentPath + "/" + name : name;
+  const res = await api("POST", "/api/tool/write", { path: rel, content: "" });
+  if (!res.ok) { alert("创建失败: " + res.error); return; }
+  $("new-file-modal").classList.add("hidden");
+  await refreshFiles(currentPath);
+  openInEditor(rel);
+}
+
+let ofAllFiles = [];
+async function collectFiles(path) {
+  const res = await api("GET", "/api/files?path=" + encodeURIComponent(path || ""));
+  if (!res.ok) return [];
+  let out = [];
+  for (const e of res.entries) {
+    if (e.is_dir && SKIP_DIRS.has(e.name)) continue;
+    const rel = path ? path + "/" + e.name : e.name;
+    if (e.is_dir) out = out.concat(await collectFiles(rel));
+    else out.push(rel);
+  }
+  return out;
+}
+async function openFileBrowser() {
+  $("of-search").value = "";
+  $("open-file-modal").classList.remove("hidden");
+  $("of-search").focus();
+  if (!ofAllFiles.length) ofAllFiles = await collectFiles("");
+  renderOpenList(ofAllFiles);
+}
+function renderOpenList(list) {
+  const box = $("of-list");
+  box.innerHTML = "";
+  if (!list.length) { box.innerHTML = `<div class="of-empty">没有可打开的文件</div>`; return; }
+  for (const f of list) {
+    const row = document.createElement("div");
+    row.className = "of-row";
+    row.textContent = f;
+    row.onclick = () => { $("open-file-modal").classList.add("hidden"); openInEditor(f); };
+    box.appendChild(row);
+  }
+}
+
+const COMMANDS = [
+  { label: "新建文件", fn: () => openNewFile() },
+  { label: "打开文件…", fn: () => openFileBrowser() },
+  { label: "保存", fn: () => saveCurrent() },
+  { label: "切换资源管理器", fn: () => toggleSidebar() },
+  { label: "切换 AI 面板", fn: () => toggleAiPanel() },
+  { label: "运行当前文件", fn: () => runCurrentFile() },
+  { label: "查看帮助", fn: () => showHelp() },
+];
+let cmdFiles = [];
+async function openCommandPalette() {
+  $("cmd-input").value = "";
+  $("cmd-palette-modal").classList.remove("hidden");
+  $("cmd-input").focus();
+  if (!cmdFiles.length) cmdFiles = await collectFiles("");
+  renderCmdList("");
+}
+function renderCmdList(q) {
+  const box = $("cmd-list");
+  box.innerHTML = "";
+  const ql = (q || "").toLowerCase();
+  const cmds = COMMANDS.filter(c => c.label.toLowerCase().includes(ql)).map(c => ({ tag: "⚙", text: c.label, fn: c.fn }));
+  const files = cmdFiles.filter(f => f.toLowerCase().includes(ql)).map(f => ({ tag: "📄", text: f, fn: () => openInEditor(f) }));
+  const all = cmds.concat(files).slice(0, 300);
+  if (!all.length) { box.innerHTML = `<div class="of-empty">无匹配</div>`; return; }
+  for (const item of all) {
+    const row = document.createElement("div");
+    row.className = "of-row";
+    row.textContent = item.tag + " " + item.text;
+    row.onclick = () => { $("cmd-palette-modal").classList.add("hidden"); item.fn(); };
+    box.appendChild(row);
+  }
+}
+
+async function gotoLine() {
+  const s = prompt("跳转到行号：");
+  if (!s) return;
+  const n = parseInt(s, 10);
+  if (!n || n < 1) return;
+  const ta = $("code-area");
+  const lines = ta.value.split("\n");
+  if (n > lines.length) { alert("行号超出范围（共 " + lines.length + " 行）"); return; }
+  let pos = 0;
+  for (let i = 0; i < n - 1; i++) pos += lines[i].length + 1;
+  ta.focus();
+  ta.setSelectionRange(pos, pos + lines[n - 1].length);
+  ta.scrollTop = Math.floor((n - 1) / lines.length * ta.scrollHeight);
+}
+
+async function runCurrentFile() {
+  if (!editorFile) { alert("请先在左侧或编辑器打开一个文件"); return; }
+  const ext = editorFile.split(".").pop().toLowerCase();
+  let cmd;
+  if (ext === "py") cmd = "python \"" + editorFile + "\"";
+  else if (ext === "js") cmd = "node \"" + editorFile + "\"";
+  else if (ext === "bat" || ext === "cmd") cmd = "cmd /c \"" + editorFile + "\"";
+  else if (ext === "sh") cmd = "bash \"" + editorFile + "\"";
+  else { alert("暂不支持运行该类型文件：" + ext); return; }
+  await runTerminal(cmd);
+}
+async function runSelectedText() {
+  const ta = $("code-area");
+  const sel = ta.value.slice(ta.selectionStart, ta.selectionEnd).trim();
+  if (!sel) { alert("请先在编辑器中选中要作为命令运行的文本"); return; }
+  await runTerminal(sel);
+}
+
+let findPos = 0;
+async function findInEditor() {
+  const q = prompt("查找：");
+  if (!q) return;
+  const ta = $("code-area");
+  const text = ta.value;
+  let idx = text.indexOf(q, findPos);
+  if (idx < 0) {
+    findPos = 0;
+    idx = text.indexOf(q);
+    if (idx < 0) { alert("未找到：" + q); return; }
+    alert("已回到第一处匹配");
+  }
+  ta.focus();
+  ta.setSelectionRange(idx, idx + q.length);
+  findPos = idx + q.length;
+}
+
+async function showHelp() {
+  $("help-modal").classList.remove("hidden");
+}
+
+/* ============================================================
+ *  新增模态框事件绑定
+ * ============================================================ */
+$("btn-close-newfile").onclick = () => $("new-file-modal").classList.add("hidden");
+$("btn-newfile-cancel").onclick = () => $("new-file-modal").classList.add("hidden");
+$("btn-newfile-ok").onclick = doCreateFile;
+$("nf-name").addEventListener("keydown", (e) => { if (e.key === "Enter") doCreateFile(); });
+
+$("btn-close-open").onclick = () => $("open-file-modal").classList.add("hidden");
+$("of-search").addEventListener("input", () => renderOpenList(ofAllFiles.filter(f => f.toLowerCase().includes($("of-search").value.toLowerCase()))));
+
+$("btn-close-cmd").onclick = () => $("cmd-palette-modal").classList.add("hidden");
+$("cmd-input").addEventListener("input", () => renderCmdList($("cmd-input").value));
+
+$("btn-close-help").onclick = () => $("help-modal").classList.add("hidden");
+
+["open-file-modal", "new-file-modal", "cmd-palette-modal", "help-modal"].forEach(id => {
+  $(id).addEventListener("click", (e) => { if (e.target === $(id)) $(id).classList.add("hidden"); });
+});

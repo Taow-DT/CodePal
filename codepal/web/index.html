@@ -247,6 +247,74 @@
     </div>
   </div>
 
+  <!-- ===== 打开文件 ===== -->
+  <div id="open-file-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>打开文件</h2>
+        <button id="btn-close-open" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <input id="of-search" class="of-search" placeholder="输入文件名以过滤…" autocomplete="off" spellcheck="false" />
+        <div id="of-list" class="of-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 新建文件 ===== -->
+  <div id="new-file-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>新建文件</h2>
+        <button id="btn-close-newfile" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <p class="hint">将在当前目录 <code id="nf-dir">.</code> 下创建文件。可包含子目录，例如 <code>sub/a.py</code>。</p>
+        <label>文件名
+          <input id="nf-name" placeholder="例如 hello.py" autocomplete="off" spellcheck="false" />
+        </label>
+      </div>
+      <div class="modal-foot">
+        <button id="btn-newfile-cancel" class="btn">取消</button>
+        <button id="btn-newfile-ok" class="btn primary">创建</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 命令面板 ===== -->
+  <div id="cmd-palette-modal" class="modal hidden">
+    <div class="modal-card">
+      <div class="modal-head">
+        <h2>命令面板</h2>
+        <button id="btn-close-cmd" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <input id="cmd-input" class="of-search" placeholder="输入命令或文件名…" autocomplete="off" spellcheck="false" />
+        <div id="cmd-list" class="of-list"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== 帮助 ===== -->
+  <div id="help-modal" class="modal hidden">
+    <div class="modal-card wide">
+      <div class="modal-head">
+        <h2>使用帮助</h2>
+        <button id="btn-close-help" class="icon-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <ul class="help-list">
+          <li><b>新建文件</b>：菜单「文件」→「新建文件」，输入文件名后创建并在编辑器打开。</li>
+          <li><b>打开文件</b>：菜单「文件」→「打开文件…」，或「转到」→「转到文件…」，在列表中点选；也可直接点左侧资源管理器中的文件。</li>
+          <li><b>编辑与保存</b>：在中间编辑器直接输入，<b>Ctrl+S</b> 保存。</li>
+          <li><b>运行</b>：菜单「运行」→「运行当前文件」（支持 .py/.js/.bat/.sh）；或在底部终端输入命令。</li>
+          <li><b>查找</b>：菜单「编辑」→「查找」，输入关键词跳转到下一处匹配。</li>
+          <li><b>AI 对话</b>：右侧面板下达需求；首次使用请先在「设置」中配置 API Key。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
   <script src="/app.js"></script>
 </body>
 </html>
