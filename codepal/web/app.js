@@ -414,7 +414,7 @@ function initMenu() {
     file: [["新建文件", () => openNewFile()], ["打开文件…", () => openFileBrowser()], ["—", null], ["保存 (Ctrl+S)", () => saveCurrent()], ["全部保存", () => saveCurrent()]],
     edit: [["撤销", () => { const ta=$("code-area"); ta.focus(); document.execCommand("undo"); }], ["重做", () => { const ta=$("code-area"); ta.focus(); document.execCommand("redo"); }], ["—", null], ["查找", () => findInEditor()]],
     select: [["全选", () => { const ta=$("code-area"); ta.focus(); ta.select(); }]],
-    view: [["切换资源管理器", () => toggleSidebar()], ["切换 AI 面板", () => toggleAiPanel()], ["命令面板…", () => openCommandPalette()]],
+    view: [["切换资源管理器", () => toggleSidebar()], ["切换 AI 面板", () => toggleAiPanel()], ["切换深色/浅色主题", () => toggleTheme()], ["命令面板…", () => openCommandPalette()]],
     goto: [["转到文件…", () => openFileBrowser()], ["转到行…", () => gotoLine()]],
     run: [["运行当前文件", () => runCurrentFile()], ["启动调试", () => startDebug()]],
     terminal: [["新建终端", () => $("term-input").focus()], ["运行所选文本", () => runSelectedText()]],
@@ -823,3 +823,30 @@ document.addEventListener("keydown", (e) => {
   if (e.key === "F5") { e.preventDefault(); e.shiftKey ? stopDebug() : debugCmd("c"); }
   else if (e.key === "F10") { e.preventDefault(); debugCmd("s"); }
 });
+
+/* ============ 主题：深色 / 浅色切换 ============ */
+function applyTheme(theme) {
+  const root = document.documentElement;
+  if (theme === "light") root.classList.add("theme-light");
+  else root.classList.remove("theme-light");
+  try { localStorage.setItem("codepal-theme", theme); } catch (e) {}
+  const btn = $("btn-theme");
+  if (btn) btn.textContent = theme === "light" ? "☀" : "🌙";
+  const st = $("st-theme");
+  if (st) st.textContent = theme === "light" ? "浅色" : "深色";
+}
+function toggleTheme() {
+  const cur = document.documentElement.classList.contains("theme-light") ? "light" : "dark";
+  applyTheme(cur === "light" ? "dark" : "light");
+}
+const _themeBtn = $("btn-theme");
+if (_themeBtn) _themeBtn.onclick = toggleTheme;
+(function () {
+  let saved = "dark";
+  try { saved = localStorage.getItem("codepal-theme") || "dark"; } catch (e) {}
+  applyTheme(saved);
+})();
+
+/* 状态栏主题指示项：点击切换 */
+const _stTheme = $("st-theme");
+if (_stTheme) _stTheme.onclick = toggleTheme;
